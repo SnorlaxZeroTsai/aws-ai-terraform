@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -12,7 +12,26 @@ echo "========================================${NC}"
 echo ""
 echo -e "${YELLOW}Resources to be destroyed:${NC}"
 cd ../terraform
-terraform plan -destroy
+
+# Check if terraform is initialized
+if [ ! -d ".terraform" ]; then
+    echo "Error: Terraform is not initialized."
+    echo "Please run 'terraform init' first."
+    exit 1
+fi
+
+# Check if terraform state exists
+if ! terraform state list &> /dev/null; then
+    echo "Error: No terraform state found."
+    echo "Please ensure terraform is properly initialized and state exists."
+    exit 1
+fi
+
+# Check if terraform plan succeeds
+if ! terraform plan -destroy; then
+    echo "Error: Terraform plan failed. Please review the errors above."
+    exit 1
+fi
 
 echo ""
 read -p "Are you sure you want to proceed? (yes/no): " confirm

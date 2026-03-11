@@ -1,4 +1,15 @@
 #!/bin/bash
+set -euo pipefail
+
+# Check for required dependencies
+if ! command -v bc &> /dev/null; then
+    echo "Error: 'bc' command is required but not installed."
+    echo "Please install bc to run this script."
+    echo "  - Ubuntu/Debian: sudo apt-get install bc"
+    echo "  - macOS: brew install bc"
+    echo "  - RHEL/CentOS: sudo yum install bc"
+    exit 1
+fi
 
 echo "=================================="
 echo "Stage 1: Cost Estimate"
