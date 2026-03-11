@@ -26,5 +26,20 @@ module "iam" {
   }
 }
 
+# Security Module
+module "security" {
+  source = "./modules/security"
+
+  name   = "stage1"
+  vpc_id = module.vpc.vpc_id
+
+  ssh_allowed_cidr = var.ssh_allowed_cidr != null ? [var.ssh_allowed_cidr] : ["0.0.0.0/0"]
+  app_port         = 8080
+
+  tags = {
+    Stage = "1-foundation"
+  }
+}
+
 # Placeholder for EC2 instances
 # Placeholder for networking components
