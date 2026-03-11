@@ -14,11 +14,11 @@ output "private_subnet_ids" {
 }
 
 output "ec2_public_ip" {
-  description = "Public IP of the EC2 instance in public subnet"
-  value       = aws_instance.public_instance.public_ip
+  description = "Test EC2 public IP"
+  value       = module.ec2.public_ip
 }
 
-output "ec2_private_ip" {
-  description = "Private IP of the EC2 instance in private subnet"
-  value       = aws_instance.private_instance.private_ip
+output "ec2_instance_id" {
+  description = "Test EC2 instance ID"
+  value       = module.ec2.public_instance_id
 }

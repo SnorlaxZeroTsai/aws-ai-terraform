@@ -41,5 +41,20 @@ module "security" {
   }
 }
 
-# Placeholder for EC2 instances
+# EC2 Module
+module "ec2" {
+  source = "./modules/ec2"
+
+  name                     = "stage1"
+  instance_type            = var.ec2_instance_type
+  public_subnet_ids        = module.vpc.public_subnet_ids
+  public_security_group_id = module.security.public_security_group_id
+  instance_profile_name    = module.iam.instance_profile_name
+  ssh_key_name             = var.ssh_key_name
+
+  tags = {
+    Stage = "1-foundation"
+  }
+}
+
 # Placeholder for networking components
