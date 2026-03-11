@@ -14,6 +14,7 @@ The foundation of the infrastructure is a Virtual Private Cloud (VPC) that provi
 | **DNS Hostnames** | Enabled | Instances get DNS hostnames |
 | **DNS Support** | Enabled | DNS resolution works within VPC |
 | **Instance Tenancy** | Default | Shared hardware (cost-optimized) |
+| **Flow Logs** | Not enabled (can be added for security) | VPC flow logs for network monitoring |
 
 **Resource Name**: `stage1-vpc`
 
@@ -109,7 +110,7 @@ A test instance deployed in the public subnet for connectivity validation.
 | **Instance Type** | `t3.micro` (default) | 2 vCPU, 1 GB RAM |
 | **Placement** | Public Subnet 1 (AZ: us-east-1a) | For internet accessibility |
 | **Public IP** | Enabled | Auto-assigned on launch |
-| **Storage** | GP2 (default) | General purpose SSD |
+| **Storage** | 8 GB gp2 | General purpose SSD |
 | **Key Pair** | Optional | If `ssh_key_name` provided |
 
 **IAM Instance Profile**: `stage1-ec2-instance-profile`
@@ -368,19 +369,7 @@ terraform {
 ## Testing
 
 ### Unit Testing
-
-**Module Structure Testing**:
-```bash
-# Validate module syntax
-terraform fmt -check
-terraform validate
-
-# Check variable types
-terraform plan -var-file=testing.tfvars
-
-# Verify no drift
-terraform plan -detailed-exitcode
-```
+- N/A for pure Terraform (use validation)
 
 **Security Scanning**:
 ```bash
@@ -611,8 +600,14 @@ terraform force-unlock <lock-id>
 
 **State Management**:
 ```bash
+# Check Terraform version
+terraform version
+
 # View current state
 terraform show
+
+# Show outputs
+terraform output
 
 # List resources in state
 terraform state list
