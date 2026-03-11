@@ -1,0 +1,24 @@
+# Terraform Variables Template
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "dev"
+
+# Notification Configuration
+# Leave as null if you don't want email notifications
+notification_email = null
+
+# File Upload Constraints
+allowed_file_types = ["pdf", "png", "jpg", "jpeg"]
+max_file_size_mb   = 10
+
+# Async Processing
+enable_async_processing = true
+
+# Textract Features
+textract_features = [
+  { name = "TABLES", enabled = true },
+  { name = "FORMS",  enabled = true },
+  { name = "LAYOUT", enabled = false }
+]

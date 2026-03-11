@@ -1,0 +1,36 @@
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "dev"
+
+# Project Configuration
+project_name = "aws-ai-roadmap"
+
+# VPC Configuration (from Stage 1)
+# These values will be automatically retrieved from Stage 1 terraform.tfstate
+# No need to specify them here unless you want to override
+
+# Lambda Configuration
+lambda_timeout    = 30
+lambda_memory_size = 256
+lambda_runtime    = "python3.11"
+
+# API Gateway Configuration
+api_gateway_stage_name = "v1"
+
+# Bedrock Configuration
+bedrock_model_id    = "anthropic.claude-3-sonnet-1-20240229-v1:0"
+bedrock_max_tokens  = 1000
+bedrock_temperature = 0.7
+
+# CloudWatch Configuration
+cloudwatch_log_retention = 7
+enable_cloudwatch_alarms = true
+
+# Secrets Manager Configuration
+secret_name = "stage2-chatbot-secrets"
+
+# Additional Tags
+additional_tags = {
+  Owner      = "your-name"
+  CostCenter = "learning"
+}
