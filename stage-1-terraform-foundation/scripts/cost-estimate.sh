@@ -37,7 +37,7 @@ printf "%-20s %10s %10s\n" "EC2 t3.micro" "\$$EC2_HOURLY" "\$$EC2_MONTHLY"
 echo ""
 
 TOTAL=$(echo "$NAT_MONTHLY + $EC2_MONTHLY" | bc)
-echo "Estimated Monthly Total: ~$${TOTAL}"
+echo "Estimated Monthly Total: ~\$$TOTAL"
 echo ""
 
 echo "Cost Optimization Tips:"
