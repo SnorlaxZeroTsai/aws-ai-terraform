@@ -1,0 +1,166 @@
+{
+  "Comment": "Autonomous Agent ReAct Workflow",
+  "StartAt": "InitializeAgent",
+  "Version": "1.0",
+  "States": {
+    "InitializeAgent": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Next": "InitializeMemory",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ],
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "InitializeMemory": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Parameters": {
+        "operation": "initialize_memory",
+        "session_id.$": "$.session_id"
+      },
+      "Next": "Reason",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ]
+    },
+    "Reason": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-reasoning-engine",
+      "Next": "CheckIteration",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleError"
+        }
+      ],
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "CheckIteration": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.iteration",
+          "NumericLessThan": 10,
+          "Next": "DecideAction"
+        }
+      ],
+      "Default": "Finalize"
+    },
+    "DecideAction": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.action.type",
+          "StringEquals": "tool",
+          "Next": "ExecuteTool"
+        },
+        {
+          "Variable": "$.action.type",
+          "StringEquals": "respond",
+          "Next": "Finalize"
+        }
+      ],
+      "Default": "Reason"
+    },
+    "ExecuteTool": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-tool-executor",
+      "Next": "StoreToolResult",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HandleToolError"
+        }
+      ],
+      "Retry": [
+        {
+          "ErrorEquals": ["States.TaskFailed"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 2,
+          "BackoffRate": 2.0
+        }
+      ]
+    },
+    "StoreToolResult": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Parameters": {
+        "operation": "store_memory",
+        "session_id.$": "$.session_id",
+        "data.$": "$.tool_result"
+      },
+      "Next": "UpdateContext",
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.warning",
+          "Next": "UpdateContext"
+        }
+      ]
+    },
+    "HandleToolError": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Parameters": {
+        "operation": "handle_error",
+        "error.$": "$.error",
+        "session_id.$": "$.session_id"
+      },
+      "Next": "UpdateContext",
+      "ResultPath": "$.tool_result"
+    },
+    "UpdateContext": {
+      "Type": "Pass",
+      "Next": "Reason",
+      "ResultSelector": {
+        "iteration.$": "$.iteration + 1",
+        "query.$": "$.query",
+        "session_id.$": "$.session_id",
+        "history.$": "$.history"
+      }
+    },
+    "Finalize": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Parameters": {
+        "operation": "finalize",
+        "context.$": "$"
+      },
+      "End": true
+    },
+    "HandleError": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:REGION:ACCOUNT_ID:function:stage5-lambda-agent-core",
+      "Parameters": {
+        "operation": "handle_error",
+        "error.$": "$.error"
+      },
+      "End": true
+    }
+  }
+}

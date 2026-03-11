@@ -1,0 +1,32 @@
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "dev"
+
+# Stage 1 State Path (relative to this file)
+stage1_state_path = "../../stage-1-terraform-foundation/terraform/terraform.tfstate"
+
+# OpenSearch Configuration
+opensearch_domain_name     = "stage4-rag"
+opensearch_instance_type    = "t3.medium.search"
+opensearch_instance_count   = 2
+opensearch_ebs_volume_size  = 20
+opensearch_engine_version   = "OpenSearch_2.11"
+
+# S3 Configuration
+documents_bucket_name = "stage4-documents-<unique-id>"
+
+# Lambda Configuration
+index_lambda_timeout      = 300
+index_lambda_memory_size  = 512
+search_lambda_timeout     = 60
+search_lambda_memory_size = 256
+
+# Bedrock Configuration
+bedrock_embedding_model = "amazon.titan-embed-text-v1"
+bedrock_llm_model       = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+# RAG Configuration
+vector_dimension = 1536
+chunk_size       = 1000
+chunk_overlap    = 200
+max_results      = 5

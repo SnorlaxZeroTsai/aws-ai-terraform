@@ -1,0 +1,25 @@
+# AWS Configuration
+aws_region = "us-east-1"
+environment = "dev"
+project_name = "autonomous-agent"
+
+# Stage 1 State (VPC)
+stage1_state_bucket = "your-stage1-state-bucket-name"
+stage1_state_key = "terraform-foundation/terraform.tfstate"
+
+# Agent Configuration
+max_iterations = 10
+bedrock_model_id = "anthropic.claude-3-sonnet-20240229-v1:0"
+
+# Lambda Configuration
+lambda_timeout = 300
+lambda_memory_size = 512
+
+# DynamoDB Configuration
+dynamodb_read_capacity = -1  # -1 for on-demand
+dynamodb_write_capacity = -1  # -1 for on-demand
+memory_ttl_days = 7
+
+# Logging
+enable_cloudwatch_logs = true
+log_retention_days = 7
