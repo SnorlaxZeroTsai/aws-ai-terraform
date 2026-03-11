@@ -42,7 +42,7 @@ echo ""
 
 echo "Cost Optimization Tips:"
 echo "1. Stop EC2 when not in use"
-echo "2. Use NAT instance for development (saves ~$20/month)"
+echo "2. Use NAT instance for development (saves ~\$20/month)"
 echo "3. Monitor with AWS Cost Explorer"
 echo "4. Set up billing alerts"
 echo ""
