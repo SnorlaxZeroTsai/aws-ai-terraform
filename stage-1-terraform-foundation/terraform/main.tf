@@ -15,5 +15,16 @@ module "vpc" {
   }
 }
 
+# IAM Module
+module "iam" {
+  source = "./modules/iam"
+
+  name = "stage1"
+
+  tags = {
+    Stage = "1-foundation"
+  }
+}
+
 # Placeholder for EC2 instances
 # Placeholder for networking components
