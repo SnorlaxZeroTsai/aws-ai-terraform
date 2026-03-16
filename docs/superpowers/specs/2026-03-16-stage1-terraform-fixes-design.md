@@ -2,7 +2,20 @@
 
 **日期:** 2026-03-16
 **状态:** 设计阶段
-**范围:** Stage 1 修复 + Stage 2-6 检查
+**范围:** Stage 1 修复
+
+## 前置条件与假设
+
+**环境要求：**
+- AWS CLI 已配置且凭证有效
+- Terraform >= 1.0 已安装
+- 无现有 Terraform 状态需要迁移
+- 无正在运行的 AWS 资源需要迁移
+
+**假设：**
+- 这是个人学习/测试环境
+- 用户有基本 Terraform 操作经验
+- 不需要向后兼容现有部署
 
 ## 问题概述
 
@@ -24,15 +37,61 @@ Stage 1 Terraform 代码存在 6 个主要问题，导致无法在 AWS 上正常
 
 ## 修复方案：方案 A - 最小化修复
 
+### 修复单元组织
+
+修复工作分为 5 个独立单元，每个单元可独立验证：
+
+#### 单元 1: 修复 outputs.tf 资源引用
+- **目的:** 修复根级 outputs 中的错误资源引用
+- **影响文件:** `terraform/outputs.tf`
+- **优先级:** 🔴 严重（阻塞 terraform plan）
+- **输入:** 模块输出值
+- **输出:** 正确的 outputs 引用
+- **验证:** `terraform plan` 成功执行
+
+#### 单元 2: 修复 key_name 默认值
+- **目的:** 防止空字符串导致 AWS API 错误
+- **影响文件:**
+  - `terraform/variables.tf`
+  - `terraform/modules/ec2/variables.tf`
+- **优先级:** 🟡 中等（可能导致 EC2 创建失败）
+- **输入:** 无
+- **输出:** 修正后的默认值 null
+- **验证:** `terraform validate` 通过
+
+#### 单元 3: 更新 AMI 为 Amazon Linux 2023
+- **目的:** 使用最新支持的 AMI，避免 EOL 问题
+- **影响文件:** `terraform/modules/ec2/main.tf`
+- **优先级:** 🟠 低（当前仍可工作）
+- **输入:** AWS AMI 查询
+- **输出:** AL2023 AMI ID
+- **验证:** `terraform plan` 显示正确 AMI
+
+#### 单元 4: 添加 SSH 安全警告
+- **目的:** 提醒用户默认 SSH 配置的安全风险
+- **影响文件:** `terraform/variables.tf`
+- **优先级:** 🔵 低（文档改进）
+- **输入:** 无
+- **输出:** 更新的描述文本
+- **验证:** 代码审查确认警告存在
+
+#### 单元 5: 创建 .gitignore 保护
+- **目的:** 防止状态文件被提交到 git
+- **影响文件:** `.gitignore`（新建或追加）
+- **优先级:** 🔵 低（防护性措施）
+- **输入:** 无
+- **输出:** 包含 terraform 规则的 .gitignore
+- **验证:** 状态文件被忽略
+
 ### 文件修改清单
 
-| 文件 | 修改内容 | 优先级 |
-|------|----------|--------|
-| `terraform/outputs.tf` | 修复资源引用 | 🔴 严重 |
-| `terraform/variables.tf` | 添加警告，修复 key_name | 🟡 中等 |
-| `terraform/modules/ec2/main.tf` | 更新 AMI 为 AL2023 | 🟠 低 |
-| `terraform/modules/ec2/variables.tf` | 修复 key_name 默认值 | 🟡 中等 |
-| `.gitignore` | 添加状态文件保护 | 🔵 低 |
+| 文件 | 修改内容 | 影响单元 |
+|------|----------|----------|
+| `terraform/outputs.tf` | 修复资源引用 | 单元 1 |
+| `terraform/variables.tf` | 添加警告，修复 key_name | 单元 2, 4 |
+| `terraform/modules/ec2/main.tf` | 更新 AMI 为 AL2023 | 单元 3 |
+| `terraform/modules/ec2/variables.tf` | 修复 key_name 默认值 | 单元 2 |
+| `.gitignore` | 添加状态文件保护 | 单元 5 |
 
 ### 具体修改
 
@@ -124,7 +183,9 @@ variable "ssh_key_name" {
 
 #### 5. .gitignore
 
-添加状态文件保护：
+**检查文件是否存在:** 项目根目录已存在 `.gitignore`
+
+**操作:** 在现有 `.gitignore` 文件末尾追加以下内容（如果规则不存在）：
 
 ```
 # Terraform files
@@ -135,38 +196,99 @@ variable "ssh_key_name" {
 terraform.tfstate.backup
 ```
 
+**验证:** 确保 `terraform.tfstate` 等文件不被 git 跟踪
+
 ## 验证计划
 
-修复完成后执行以下验证：
+修复完成后按顺序执行以下验证：
 
+### 1. 语法验证
 ```bash
-# 1. 初始化 Terraform
 cd stage-1-terraform-foundation/terraform
-terraform init
-
-# 2. 验证代码语法
 terraform validate
-
-# 3. 查看执行计划
-terraform plan
-
-# 4. (可选) 实际部署
-terraform apply
 ```
+**期望输出:** `Success! The configuration is valid.`
+
+### 2. 计划验证
+```bash
+terraform plan
+```
+**期望输出:**
+- 无错误
+- 显示将创建的资源列表
+- AMI 显示为 al2023-ami-2023.*
+
+### 3. 状态文件保护验证
+```bash
+cat .gitignore | grep -E "tfstate|terraform"
+```
+**期望输出:** 应包含 `*.tfstate` 等规则
+
+### 4. 实际部署验证（可选）
+```bash
+terraform apply
+# 等待资源创建完成
+```
+
+**部署后验证:**
+```bash
+# 检查 outputs
+terraform output vpc_id
+terraform output ec2_public_ip
+
+# 检查 EC2 实例（如果创建）
+aws ec2 describe-instances --instance-ids $(terraform output ec2_instance_id | tr -d '"')
+
+# 验证 AMI 类型
+aws ec2 describe-images --image-ids $(aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[0].Instances[0].ImageId' --output text) --query 'Images[0].Name' --output text
+# 期望输出包含: al2023-ami-2023
+```
+
+### 5. 清理验证（如果部署）
+```bash
+terraform destroy
+```
+**期望输出:** 资源成功删除，无残留
 
 ## Stage 2-6 检查计划
 
-完成 Stage 1 修复后，检查其他 Stage 是否有相同问题：
+**注意:** Stage 2-6 检查是独立的后续工作，不在本规范范围内。完成本规范实施后，应创建单独的后续规范：`Stage 2-6 Terraform 一致性审查`。
+
+**检查清单（供后续规范使用）：**
 
 | 检查项 | Stage 2 | Stage 3 | Stage 4 | Stage 5 | Stage 6 |
 |--------|---------|---------|---------|---------|---------|
-| outputs.tf 引用错误 | ✓ | ✓ | ✓ | ✓ | ✓ |
-| AMI 查询方式 | ✓ | ✓ | ✓ | ✓ | ✓ |
-| key_name 默认值 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| outputs.tf 引用错误 | ? | ? | ? | ? | ? |
+| AMI 查询方式 | ? | ? | ? | ? | ? |
+| key_name 默认值 | ? | ? | ? | ? | ? |
 
-**修复策略：**
-- 发现相同问题，应用相同修复模式
-- 保持架构一致性
+**后续规范应定义：**
+- 检查方法（手动 vs 自动化脚本）
+- 发现问题的处理流程
+- 是否需要独立规范或合并修复
+- 与 Stage 1 的依赖关系
+
+## 错误场景处理
+
+| 场景 | 处理方式 | 备注 |
+|------|----------|------|
+| AMI 查找失败 | terraform plan 会失败，用户需手动验证区域可用性 | 检查 AWS 区域是否有 AL2023 |
+| SSH key 不存在 | terraform apply 会失败，需创建 key pair 或设为 null | AWS 控制台创建 key pair |
+| 语法错误 | terraform validate 会捕获 | 修复后重新验证 |
+| 状态文件损坏 | 备份当前状态，可能需要重建 | 清空状态重新 apply |
+
+## 回滚计划
+
+如果修复导致问题：
+
+1. **代码回滚:** `git checkout <previous-commit>`
+2. **状态回滚:** `terraform rollback` 或删除 `.tfstate` 重新开始
+3. **资源清理:** 如果部分资源已创建，手动在 AWS 控制台删除或使用 `terraform destroy`
+
+**回滚触发条件：**
+- terraform apply 失败且无法修复
+- 创建的资源与预期不符
+- 成本异常（如创建了意外的昂贵资源）
 
 ## 未修复项（有意保留）
 
