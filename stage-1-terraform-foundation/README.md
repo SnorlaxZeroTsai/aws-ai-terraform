@@ -176,7 +176,8 @@ cd tests
 - `availability_zones`: ["us-east-1a", "us-east-1b"]
 - `enable_nat_gateway`: true
 - `ec2_instance_type`: t3.micro
-- `ssh_key_name`: "" (empty default)
+- `ssh_key_name`: null (no SSH key by default - use Session Manager for access)
+- `ssh_allowed_cidr`: null (allows 0.0.0.0/0 - use only for learning/testing, NOT for production)
 
 ### Customizing Variables
 

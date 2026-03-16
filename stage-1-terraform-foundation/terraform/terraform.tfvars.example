@@ -1,0 +1,51 @@
+# Terraform Variables Example
+# Copy this file to terraform.tfvars and update with your values
+# DO NOT commit terraform.tfvars to version control (it's in .gitignore)
+
+# ============================================================================
+# AWS Configuration
+# ============================================================================
+
+aws_region          = "us-east-1"
+environment         = "dev"
+
+# ============================================================================
+# Network Configuration
+# ============================================================================
+
+vpc_cidr           = "10.0.0.0/16"
+availability_zones  = ["us-east-1a", "us-east-1b"]
+enable_nat_gateway  = true
+
+# ============================================================================
+# EC2 Configuration
+# ============================================================================
+
+ec2_instance_type   = "t3.micro"
+
+# ============================================================================
+# SSH Access Configuration
+# ============================================================================
+# IMPORTANT: Default values allow SSH from anywhere (0.0.0.0/0)
+# This is ONLY suitable for learning/testing environments
+# For production, specify your IP address or VPN CIDR
+
+# SSH key pair name (optional - if null, no key pair is associated)
+# Create key pair first: aws ec2 create-key-pair --key-name my-key
+ssh_key_name        = null
+
+# CIDR block allowed for SSH access
+# For single IP: "1.2.3.4/32"
+# For your ISP: "36.224.0.0/13" (Taiwan fixed-line example)
+# For everywhere (NOT recommended): "0.0.0.0/0"
+ssh_allowed_cidr    = null
+
+# ============================================================================
+# Production Example (commented out)
+# ============================================================================
+
+# aws_region          = "us-east-1"
+# environment         = "prod"
+# ec2_instance_type   = "t3.small"
+# ssh_key_name        = "prod-ssh-key"
+# ssh_allowed_cidr    = "YOUR.OFFICE.IP/32"
