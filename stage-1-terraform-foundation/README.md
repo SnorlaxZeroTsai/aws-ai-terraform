@@ -1,5 +1,27 @@
 # Stage 1: Terraform Foundation
 
+> **🎯 Educational Goal:** This stage transforms you from a Terraform beginner to a cloud architect who understands **why** we design infrastructure the way we do, not just **how** to write the code.
+
+## 📚 Learning Path (Read First!)
+
+**Before deploying anything**, read the teaching documents in order to understand the architecture decisions:
+
+1. **[Why Network Foundation Matters](docs/00-why-network.md)** - Start here to understand why we need VPC at all
+2. **[VPC Design Decisions](docs/01-vpc-decisions.md)** - Learn IP planning, subnet design, and AZ strategy
+3. **[Public vs Private Subnets](docs/02-subnet-strategy.md)** - Understand what resources go where (and why)
+4. **[NAT Gateway Tradeoffs](docs/03-nat-gateway-tradeoffs.md)** - Analyze costs, alternatives, and when to skip it
+5. **[Security Layer Design](docs/04-security-layers.md)** - Implement defense-in-depth architecture
+6. **[Cost Optimization](docs/05-cost-optimization.md)** - Learn to balance cost vs reliability
+7. **[Alternative Architectures](docs/06-alternative-architectures.md)** - Explore serverless, containers, and hybrid approaches
+
+Each document answers the 4 critical questions:
+- ✅ **Why** are we designing it this way?
+- ✅ **What** are the alternatives?
+- ✅ **What** are the tradeoffs?
+- ✅ **When** should we reconsider?
+
+---
+
 ## Learning Objectives
 
 By completing this stage, you will learn how to:
