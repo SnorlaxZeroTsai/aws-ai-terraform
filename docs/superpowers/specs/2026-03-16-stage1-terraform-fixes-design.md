@@ -65,7 +65,7 @@ Stage 1 Terraform 代码存在 6 个主要问题，导致无法在 AWS 上正常
 - **优先级:** 🟠 低（当前仍可工作）
 - **输入:** AWS AMI 查询
 - **输出:** AL2023 AMI ID
-- **验证:** `terraform plan` 显示正确 AMI
+- **验证:** `terraform plan` 输出中 AMI 名称匹配 `al2023-ami-2023.*` 模式
 
 #### 单元 4: 添加 SSH 安全警告
 - **目的:** 提醒用户默认 SSH 配置的安全风险
@@ -148,6 +148,7 @@ variable "ssh_allowed_cidr" {
 
 更新 AMI 为 Amazon Linux 2023：
 
+**修改部分（data 源）：**
 ```terraform
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
@@ -163,12 +164,16 @@ data "aws_ami" "amazon_linux_2023" {
     values = ["hvm"]
   }
 }
+```
 
+**修改部分（resource 引用）：**
+```terraform
 resource "aws_instance" "public_test" {
   count         = var.create_public_instance ? 1 : 0
-  ami           = data.aws_ami.amazon_linux_2023.id
-  # ... 其余保持不变
+  ami           = data.aws_ami.amazon_linux_2023.id  # 更新：amazon_linux_2 → amazon_linux_2023
+  # ... 其余字段保持不变
 }
+```
 ```
 
 #### 4. terraform/modules/ec2/variables.tf
@@ -254,7 +259,9 @@ terraform destroy
 
 **注意:** Stage 2-6 检查是独立的后续工作，不在本规范范围内。完成本规范实施后，应创建单独的后续规范：`Stage 2-6 Terraform 一致性审查`。
 
-**检查清单（供后续规范使用）：**
+以下表格仅供参考，**不应在本规范实施期间填写**：
+
+**检查清单模板（供后续规范使用）：**
 
 | 检查项 | Stage 2 | Stage 3 | Stage 4 | Stage 5 | Stage 6 |
 |--------|---------|---------|---------|---------|---------|
@@ -305,4 +312,11 @@ terraform destroy
 1. ✅ `terraform validate` 通过无错误
 2. ✅ `terraform plan` 成功生成执行计划
 3. ✅ `terraform apply` 能成功创建资源
-4. ✅ Stage 2-6 检查完成，发现的问题已修复
+4. ✅ 所有 5 个修复单元独立验证通过
+
+## 下一步
+
+完成本规范实施后：
+1. 创建 `Stage 2-6 Terraform 一致性审查` 规范
+2. 使用相同的修复模式检查其他 Stage
+3. 保持架构一致性
