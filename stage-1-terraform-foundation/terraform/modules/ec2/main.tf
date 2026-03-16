@@ -1,11 +1,11 @@
-# Get latest Amazon Linux 2 AMI
-data "aws_ami" "amazon_linux_2" {
+# Get latest Amazon Linux 2023 AMI
+data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-2023.*-x86_64"]
   }
 
   filter {
@@ -17,7 +17,7 @@ data "aws_ami" "amazon_linux_2" {
 # EC2 Instance in Public Subnet (for testing)
 resource "aws_instance" "public_test" {
   count         = var.create_public_instance ? 1 : 0
-  ami           = data.aws_ami.amazon_linux_2.id
+  ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = var.instance_type
 
   subnet_id                   = var.public_subnet_ids[0]
