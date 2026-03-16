@@ -41,7 +41,7 @@ variable "ssh_key_name" {
 }
 
 variable "ssh_allowed_cidr" {
-  description = "CIDR block allowed for SSH access (null = anywhere, NOT recommended for production)"
+  description = "CIDR block allowed for SSH access (default allows ANYWHERE - NOT recommended for production, use only for learning/testing)"
   type        = string
   default     = null
 }
