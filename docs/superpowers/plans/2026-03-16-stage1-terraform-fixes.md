@@ -282,7 +282,18 @@ cd stage-1-terraform-foundation/terraform
 terraform validate
 ```
 
-- [ ] **Step 3: 提交更改**
+预期输出: `Success! The configuration is valid.`
+
+- [ ] **Step 3: 验证警告文本存在**
+
+```bash
+cd stage-1-terraform-foundation/terraform
+grep "NOT recommended for production" variables.tf
+```
+
+预期输出: 显示包含警告文本的行
+
+- [ ] **Step 4: 提交更改**
 
 ```bash
 cd /home/zero/aws-ai-terraform
