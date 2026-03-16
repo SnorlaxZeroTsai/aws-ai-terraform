@@ -35,9 +35,9 @@ variable "ec2_instance_type" {
 }
 
 variable "ssh_key_name" {
-  description = "Name of SSH key pair for EC2 instances"
+  description = "Name of SSH key pair for EC2 instances (null = no key pair)"
   type        = string
-  default     = ""
+  default     = null
 }
 
 variable "ssh_allowed_cidr" {
