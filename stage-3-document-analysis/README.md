@@ -1,5 +1,22 @@
 # Stage 3: Document Analysis System
 
+> **🎯 Educational Goal:** This stage teaches you event-driven architecture and NoSQL database design for async document processing.
+
+## 📚 Learning Path
+
+**Read the teaching documents to understand the architecture decisions:**
+
+1. **[Async Architecture](docs/00-async-architecture.md)** - Why and when to use asynchronous processing
+2. **[DynamoDB Design](docs/01-dynamodb-design.md)** - Access pattern driven database design
+
+Each document follows the same educational framework:
+- ✅ **Why** design it this way?
+- ✅ **What** are the alternatives?
+- ✅ **What** are the tradeoffs?
+- ✅ **When** should we reconsider?
+
+---
+
 ## Learning Objectives
 
 After completing this stage, you will be able to:
