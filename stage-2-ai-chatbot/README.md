@@ -1,6 +1,26 @@
 # Stage 2: AI Chatbot Service
 
-Serverless AI chatbot API using AWS Lambda, API Gateway, and AWS Bedrock Claude.
+> **🎯 Educational Goal:** This stage teaches you serverless architecture patterns for AI applications using AWS Lambda, API Gateway, and Bedrock.
+
+## 📚 Learning Path (Read First!)
+
+**Before deploying anything**, read the teaching documents in order to understand the architecture decisions:
+
+1. **[Why Serverless?](docs/00-why-serverless.md)** - Understand the value of serverless and when to use it
+2. **[Lambda vs Containers vs VM](docs/01-lambda-vs-containers.md)** - Choose the right compute service for your AI application
+3. **[API Gateway Choices](docs/02-api-gateway-choices.md)** - Design your API layer (REST vs HTTP vs WebSocket)
+4. **[Bedrock Integration](docs/03-bedrock-integration.md)** - Integrate AI models with best practices
+5. **[Secrets Management](docs/04-secrets-management.md)** - Securely manage API keys and credentials
+6. **[Monitoring & Observability](docs/05-monitoring-observability.md)** - Track system health and performance
+7. **[Error Handling Patterns](docs/06-error-handling-patterns.md)** - Build reliable systems with proper error handling
+
+Each document answers the 4 critical questions:
+- ✅ **Why** design it this way?
+- ✅ **What** are the alternatives?
+- ✅ **What** are the tradeoffs?
+- ✅ **When** should we reconsider?
+
+---
 
 ## Overview
 
