@@ -14,8 +14,6 @@ resource "aws_sns_topic_subscription" "email" {
   topic_arn = aws_sns_topic.this[0].arn
   protocol  = "email"
   endpoint  = var.notification_email
-
-  auto_confirm_subscription = false
 }
 
 # SQS Queue for document processing

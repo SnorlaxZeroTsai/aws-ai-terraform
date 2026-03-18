@@ -53,11 +53,6 @@ resource "aws_dynamodb_table" "this" {
   }
 
   tags = var.tags
-
-  # Lifecycle: ignore changes to replica count (if adding global tables later)
-  lifecycle {
-    ignore_changes = [replicas]
-  }
 }
 
 # DynamoDB Auto Scaling (optional for on-demand)
