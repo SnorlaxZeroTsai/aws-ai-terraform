@@ -1,3 +1,21 @@
+# Passthrough outputs for backward compatibility
+# These now come from shared_infrastructure module instead of being created here
+
+output "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role (passthrough from shared_infrastructure)"
+  value       = var.lambda_execution_role_arn
+}
+
+output "lambda_execution_role_name" {
+  description = "Name of the Lambda execution role (passthrough from shared_infrastructure)"
+  value       = var.lambda_execution_role_name
+}
+
+output "lambda_security_group_id" {
+  description = "Security group ID for Lambda functions (passthrough from shared_infrastructure)"
+  value       = var.lambda_security_group_id
+}
+
 output "index_function_name" {
   description = "Name of the index Lambda function"
   value       = aws_lambda_function.index.function_name
@@ -26,19 +44,4 @@ output "api_gateway_id" {
 output "api_gateway_url" {
   description = "URL of the API Gateway"
   value       = aws_api_gateway_stage.main.invoke_url
-}
-
-output "lambda_execution_role_arn" {
-  description = "ARN of the Lambda execution role"
-  value       = aws_iam_role.lambda_execution.arn
-}
-
-output "lambda_execution_role_name" {
-  description = "Name of the Lambda execution role"
-  value       = aws_iam_role.lambda_execution.name
-}
-
-output "lambda_security_group_id" {
-  description = "Security group ID for Lambda functions"
-  value       = aws_security_group.lambda.id
 }

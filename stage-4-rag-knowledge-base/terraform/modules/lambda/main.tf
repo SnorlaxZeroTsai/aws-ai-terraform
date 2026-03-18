@@ -1,127 +1,10 @@
-# IAM Role for Lambda Functions
-resource "aws_iam_role" "lambda_execution" {
-  name = "stage4-lambda-execution-${var.environment}"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
-
-  tags = {
-    Name  = "stage4-lambda-execution-${var.environment}"
-    Stage = "4"
-  }
-}
-
-# Lambda Execution Role Policy
-resource "aws_iam_role_policy_attachment" "lambda_basic" {
-  role       = aws_iam_role.lambda_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-# Lambda VPC Access Policy
-resource "aws_iam_role_policy_attachment" "lambda_vpc" {
-  role       = aws_iam_role.lambda_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-}
-
-# Lambda Policy for Bedrock Access
-resource "aws_iam_role_policy" "bedrock_access" {
-  name = "bedrock-access"
-  role = aws_iam_role.lambda_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "bedrock:InvokeModel",
-          "bedrock:InvokeModelWithResponseStream"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# Lambda Policy for S3 Access
-resource "aws_iam_role_policy" "s3_access" {
-  name = "s3-access"
-  role = aws_iam_role.lambda_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = "${var.documents_bucket_arn}/*"
-      }
-    ]
-  })
-}
-
-# Lambda Policy for CloudWatch Logs
-resource "aws_iam_role_policy" "cloudwatch_logs" {
-  name = "cloudwatch-logs"
-  role = aws_iam_role.lambda_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "arn:aws:logs:*:*:*"
-      }
-    ]
-  })
-}
-
-# Security Group for Lambda Functions
-resource "aws_security_group" "lambda" {
-  name        = "stage4-lambda-${var.environment}"
-  description = "Security group for Lambda functions"
-  vpc_id      = var.vpc_id
-
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name  = "stage4-lambda-${var.environment}"
-    Stage = "4"
-  }
-}
-
 # Index Lambda Function
 resource "aws_lambda_function" "index" {
   function_name    = "stage4-lambda-index-${var.environment}"
   description      = "Lambda function for indexing documents into OpenSearch"
   runtime          = "python3.11"
   handler          = "index_handler.handler"
-  role             = aws_iam_role.lambda_execution.arn
+  role             = var.lambda_execution_role_arn
   timeout          = var.index_lambda_timeout
   memory_size      = var.index_lambda_memory_size
   source_code_hash = data.archive_file.index_lambda.output_base64sha256
@@ -129,7 +12,7 @@ resource "aws_lambda_function" "index" {
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.lambda_security_group_id]
   }
 
   environment {
@@ -151,9 +34,7 @@ resource "aws_lambda_function" "index" {
   }
 
   depends_on = [
-    aws_cloudwatch_log_group.index_lambda,
-    aws_iam_role_policy.bedrock_access,
-    aws_iam_role_policy.s3_access
+    aws_cloudwatch_log_group.index_lambda
   ]
 }
 
@@ -174,7 +55,7 @@ resource "aws_lambda_function" "search" {
   description      = "Lambda function for RAG search queries"
   runtime          = "python3.11"
   handler          = "search_handler.handler"
-  role             = aws_iam_role.lambda_execution.arn
+  role             = var.lambda_execution_role_arn
   timeout          = var.search_lambda_timeout
   memory_size      = var.search_lambda_memory_size
   source_code_hash = data.archive_file.search_lambda.output_base64sha256
@@ -182,7 +63,7 @@ resource "aws_lambda_function" "search" {
 
   vpc_config {
     subnet_ids         = var.private_subnet_ids
-    security_group_ids = [aws_security_group.lambda.id]
+    security_group_ids = [var.lambda_security_group_id]
   }
 
   environment {
@@ -203,8 +84,7 @@ resource "aws_lambda_function" "search" {
   }
 
   depends_on = [
-    aws_cloudwatch_log_group.search_lambda,
-    aws_iam_role_policy.bedrock_access
+    aws_cloudwatch_log_group.search_lambda
   ]
 }
 

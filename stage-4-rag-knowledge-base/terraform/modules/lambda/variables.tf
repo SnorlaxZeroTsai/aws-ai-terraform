@@ -80,3 +80,18 @@ variable "search_lambda_memory_size" {
   type        = number
   default     = 256
 }
+
+variable "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role (from shared_infrastructure module)"
+  type        = string
+}
+
+variable "lambda_execution_role_name" {
+  description = "Name of the Lambda execution role (from shared_infrastructure module)"
+  type        = string
+}
+
+variable "lambda_security_group_id" {
+  description = "Security group ID for Lambda functions (from shared_infrastructure module)"
+  type        = string
+}
