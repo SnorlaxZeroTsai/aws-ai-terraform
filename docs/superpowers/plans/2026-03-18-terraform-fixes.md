@@ -95,20 +95,6 @@ Edit `modules/cloudwatch/main.tf` lines 80-89:
             ]
 ```
 
-**AFTER (correct):**
-```hcl
-metrics = [
-  [{
-    expression = "errors/(invocations) * 100",
-    label      = "Error Rate (%)",
-    id         = "e1"
-  }],
-  [{"expression" = "m1/1000", "label" = "Duration (s)", "id" = "m1" }],
-  ["AWS/Lambda", "Invocations", [{ "name" = "FunctionName", "value" = var.lambda_function_name }], { "id" = "m1", "visible" = false }],
-  ["AWS/Lambda", "Errors", ".", { "id" = "m2", "visible" = false }]
-]
-```
-
 - [ ] **Step 5: Validate the syntax**
 
 ```bash
