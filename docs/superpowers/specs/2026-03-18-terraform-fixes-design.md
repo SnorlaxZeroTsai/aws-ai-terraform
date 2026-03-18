@@ -169,7 +169,9 @@ shared_infrastructure/
 └── README.md        # Module documentation
 ```
 
-**Resources in shared_infrastructure**:
+### shared_infrastructure Module Specification
+
+**modules/shared_infrastructure/main.tf**:
 ```hcl
 # Lambda Execution Role
 resource "aws_iam_role" "lambda_execution" {
@@ -183,6 +185,11 @@ resource "aws_iam_role" "lambda_execution" {
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
+
+  tags = {
+    Name        = "stage4-lambda-${var.environment}"
+    Environment = var.environment
+  }
 }
 
 # Lambda Security Group
@@ -198,12 +205,55 @@ resource "aws_security_group" "lambda" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name        = "stage4-lambda-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# Basic Lambda Execution Role Policy
+resource "aws_iam_role_policy_attachment" "basic_execution" {
+  role       = aws_iam_role.lambda_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 ```
 
-**Updated main.tf dependencies**:
+**modules/shared_infrastructure/variables.tf**:
 ```hcl
-# 1. Shared infrastructure (no dependencies)
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "vpc_id" {
+  description = "VPC ID where Lambda will be deployed"
+  type        = string
+}
+```
+
+**modules/shared_infrastructure/outputs.tf**:
+```hcl
+output "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role"
+  value       = aws_iam_role.lambda_execution.arn
+}
+
+output "lambda_execution_role_name" {
+  description = "Name of the Lambda execution role"
+  value       = aws_iam_role.lambda_execution.name
+}
+
+output "lambda_security_group_id" {
+  description = "Security group ID for Lambda functions"
+  value       = aws_security_group.lambda.id
+}
+```
+
+### Updated main.tf Dependencies
+
+```hcl
+# 1. Shared infrastructure (no module dependencies)
 module "shared_infrastructure" {
   source = "./modules/shared_infrastructure"
 
@@ -211,7 +261,55 @@ module "shared_infrastructure" {
   vpc_id      = data.terraform_remote_state.stage1.outputs.vpc_id
 }
 
-# 2. Lambda (depends on shared_infrastructure)
+# 2. Bedrock (no module dependencies)
+module "bedrock" {
+  source = "./modules/bedrock"
+
+  environment        = var.environment
+  embedding_model_id = var.bedrock_embedding_model
+  llm_model_id       = var.bedrock_llm_model
+}
+
+# 3. S3 (no module dependencies)
+module "s3" {
+  source = "./modules/s3"
+
+  bucket_name = var.documents_bucket_name
+  environment = var.environment
+}
+
+# 4. CloudWatch Log Group (standalone resource, no dependencies)
+resource "aws_cloudwatch_log_group" "opensearch" {
+  name              = "/aws/opensearch/${var.opensearch_domain_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name  = "stage4-opensearch-logs-${var.environment}"
+    Stage = "4"
+  }
+}
+
+# 5. OpenSearch (depends on shared_infrastructure)
+module "opensearch" {
+  source = "./modules/opensearch"
+
+  domain_name             = var.opensearch_domain_name
+  environment             = var.environment
+  vpc_id                  = data.terraform_remote_state.stage1.outputs.vpc_id
+  subnet_ids              = data.terraform_remote_state.stage1.outputs.private_subnet_ids
+  instance_type           = var.opensearch_instance_type
+  instance_count          = var.opensearch_instance_count
+  ebs_volume_size         = var.opensearch_ebs_volume_size
+  engine_version          = var.opensearch_engine_version
+  # Pass from shared_infrastructure
+  lambda_security_group_id     = module.shared_infrastructure.lambda_security_group_id
+  lambda_execution_role_arn    = module.shared_infrastructure.lambda_execution_role_arn
+  lambda_execution_role_name   = module.shared_infrastructure.lambda_execution_role_name
+  # Pass from main.tf resource
+  cloudwatch_log_arn           = aws_cloudwatch_log_group.opensearch.arn
+}
+
+# 6. Lambda (depends on shared_infrastructure, opensearch, s3, bedrock)
 module "lambda" {
   source = "./modules/lambda"
 
@@ -220,44 +318,91 @@ module "lambda" {
   private_subnet_ids            = data.terraform_remote_state.stage1.outputs.private_subnet_ids
   opensearch_domain_endpoint    = module.opensearch.domain_endpoint
   documents_bucket_arn          = module.s3.bucket_arn
-  # Use shared infrastructure outputs:
+  bedrock_embedding_model       = var.bedrock_embedding_model
+  bedrock_llm_model             = var.bedrock_llm_model
+  chunk_size                    = var.chunk_size
+  chunk_overlap                 = var.chunk_overlap
+  vector_dimension              = var.vector_dimension
+  max_results                   = var.max_results
+  index_lambda_timeout          = var.index_lambda_timeout
+  index_lambda_memory_size      = var.index_lambda_memory_size
+  search_lambda_timeout         = var.search_lambda_timeout
+  search_lambda_memory_size     = var.search_lambda_memory_size
+  # Pass from shared_infrastructure
   lambda_execution_role_arn     = module.shared_infrastructure.lambda_execution_role_arn
   lambda_execution_role_name    = module.shared_infrastructure.lambda_execution_role_name
   lambda_security_group_id      = module.shared_infrastructure.lambda_security_group_id
-  # ... other variables
-}
-
-# 3. OpenSearch (depends on shared_infrastructure)
-module "opensearch" {
-  source = "./modules/opensearch"
-
-  domain_name             = var.opensearch_domain_name
-  environment             = var.environment
-  vpc_id                  = data.terraform_remote_state.stage1.outputs.vpc_id
-  subnet_ids              = data.terraform_remote_state.stage1.outputs.private_subnet_ids
-  # Use shared infrastructure outputs:
-  lambda_security_group_id     = module.shared_infrastructure.lambda_security_group_id
-  lambda_execution_role_arn    = module.shared_infrastructure.lambda_execution_role_arn
-  lambda_execution_role_name   = module.shared_infrastructure.lambda_execution_role_name
-  # Use self-reference instead of variable:
-  domain_arn               = aws_opensearch_domain.main.arn
-  cloudwatch_log_arn       = aws_cloudwatch_log_group.opensearch.arn
-}
-
-# 4. CloudWatch Log Group (standalone resource)
-resource "aws_cloudwatch_log_group" "opensearch" {
-  name              = "/aws/opensearch/${var.opensearch_domain_name}"
-  retention_in_days = 7
 }
 ```
 
-**Updated opensearch module variables.tf**:
-- Remove: `lambda_security_group_id`, `lambda_execution_role_arn`, `lambda_execution_role_name`, `domain_arn`, `cloudwatch_log_arn`
-- These are now passed from main.tf outputs or resources
+### Updated opensearch Module
 
-**Updated lambda module main.tf**:
-- Remove: `aws_iam_role.lambda_execution`, `aws_security_group.lambda`
-- These are now created in shared_infrastructure module
+**modules/opensearch/variables.tf** - Changes:
+- **Add**: `lambda_security_group_id` (passed from shared_infrastructure via main.tf)
+- **Add**: `lambda_execution_role_arn` (passed from shared_infrastructure via main.tf)
+- **Add**: `lambda_execution_role_name` (passed from shared_infrastructure via main.tf)
+- **Add**: `cloudwatch_log_arn` (passed from aws_cloudwatch_log_group resource in main.tf)
+- **Remove**: `domain_arn` (now uses self-reference internally)
+
+**modules/opensearch/main.tf** - Changes:
+```hcl
+# In access_policies, use self-reference instead of variable:
+access_policies = jsonencode({
+  Version = "2012-10-17"
+  Statement = [
+    {
+      Action    = "es:*"
+      Effect    = "Allow"
+      Principal = { AWS = var.lambda_execution_role_arn }
+      Resource  = "${aws_opensearch_domain.main.arn}/*"  # Self-reference
+    }
+  ]
+})
+
+# Remove this resource (moved to main.tf):
+# resource "aws_cloudwatch_log_group" "opensearch" { ... }
+```
+
+### Updated lambda Module
+
+**modules/lambda/variables.tf** - Add:
+```hcl
+variable "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role"
+  type        = string
+}
+
+variable "lambda_execution_role_name" {
+  description = "Name of the Lambda execution role"
+  type        = string
+}
+
+variable "lambda_security_group_id" {
+  description = "Security group ID for Lambda functions"
+  type        = string
+}
+```
+
+**modules/lambda/main.tf** - Remove:
+```hcl
+# Remove these resources (moved to shared_infrastructure):
+# resource "aws_iam_role" "lambda_execution" { ... }
+# resource "aws_security_group" "lambda" { ... }
+```
+
+**modules/lambda/main.tf** - Update aws_lambda_function:
+```hcl
+resource "aws_lambda_function" "index" {
+  # ... other fields ...
+
+  role = var.lambda_execution_role_arn  # Use variable instead of resource reference
+
+  vpc_config {
+    subnet_ids         = var.private_subnet_ids
+    security_group_ids = [var.lambda_security_group_id]  # Use variable instead of resource reference
+  }
+}
+```
 
 ---
 
@@ -269,15 +414,90 @@ main.tf
 ├── shared_infrastructure (no module dependencies)
 │   └── outputs: lambda_execution_role_arn, lambda_security_group_id, etc.
 │
-├── lambda (depends_on: shared_infrastructure, opensearch, s3, bedrock)
-│   └── needs: opensearch.domain_endpoint (runtime)
+├── bedrock (no module dependencies)
+│
+├── s3 (no module dependencies)
+│
+├── aws_cloudwatch_log_group.opensearch (standalone resource)
 │
 ├── opensearch (depends_on: shared_infrastructure)
 │   └── needs: shared_infrastructure outputs (access policies)
 │
-├── s3 (no module dependencies)
-│
-└── bedrock (no module dependencies)
+└── lambda (depends_on: shared_infrastructure, opensearch, s3, bedrock)
+    └── needs: opensearch.domain_endpoint (runtime)
+```
+
+---
+
+## State Migration Strategy
+
+### Critical: Resource Movement Between Modules
+
+This design moves resources from their original modules to a new shared_infrastructure module. This requires careful state migration to avoid resource deletion and recreation.
+
+### Migration Process
+
+**Before making any code changes**:
+
+1. **Backup state files**:
+```bash
+cp terraform.tfstate terraform.tfstate.backup
+cp terraform.tfstate.d/terraform.tfstate terraform.tfstate.d/terraform.tfstate.backup
+```
+
+2. **Document current resource addresses**:
+```bash
+terraform state list > resources-before.txt
+```
+
+### Migration Steps (After Code Changes)
+
+**Step 1: Move IAM Role**
+```bash
+# From: module.lambda.aws_iam_role.lambda_execution
+# To:   module.shared_infrastructure.aws_iam_role.lambda_execution
+terraform state mv 'module.lambda.aws_iam_role.lambda_execution' 'module.shared_infrastructure.aws_iam_role.lambda_execution'
+```
+
+**Step 2: Move Security Group**
+```bash
+# From: module.lambda.aws_security_group.lambda
+# To:   module.shared_infrastructure.aws_security_group.lambda
+terraform state mv 'module.lambda.aws_security_group.lambda' 'module.shared_infrastructure.aws_security_group.lambda'
+```
+
+**Step 3: Move IAM Policy Attachment**
+```bash
+# From: module.lambda.aws_iam_role_policy_attachment.basic_execution
+# To:   module.shared_infrastructure.aws_iam_role_policy_attachment.basic_execution
+terraform state mv 'module.lambda.aws_iam_role_policy_attachment.basic_execution' 'module.shared_infrastructure.aws_iam_role_policy_attachment.basic_execution'
+```
+
+**Step 4: Move CloudWatch Log Group**
+```bash
+# From: module.opensearch.aws_cloudwatch_log_group.opensearch
+# To:   aws_cloudwatch_log_group.opensearch
+terraform state mv 'module.opensearch.aws_cloudwatch_log_group.opensearch' 'aws_cloudwatch_log_group.opensearch'
+```
+
+**Step 5: Verify**
+```bash
+terraform plan
+# Should show "No changes" or minimal changes (no resource recreation)
+```
+
+### Rollback Plan
+
+If migration fails:
+```bash
+# Restore from backup
+cp terraform.tfstate.backup terraform.tfstate
+
+# Or reverse the moves
+terraform state mv 'module.shared_infrastructure.aws_iam_role.lambda_execution' 'module.lambda.aws_iam_role.lambda_execution'
+terraform state mv 'module.shared_infrastructure.aws_security_group.lambda' 'module.lambda.aws_security_group.lambda'
+terraform state mv 'module.shared_infrastructure.aws_iam_role_policy_attachment.basic_execution' 'module.lambda.aws_iam_role_policy_attachment.basic_execution'
+terraform state mv 'aws_cloudwatch_log_group.opensearch' 'module.opensearch.aws_cloudwatch_log_group.opensearch'
 ```
 
 ---
@@ -310,7 +530,14 @@ terraform plan
 # Should complete successfully without cycle errors
 ```
 
-### 3. Incremental Testing
+### 3. State Migration Test (Stage 4 only)
+```bash
+# Test migration in development environment first
+terraform state mv <source> <destination>
+terraform plan  # Verify no unexpected changes
+```
+
+### 4. Incremental Testing
 Test in order: Stage 2 → Stage 3 → Stage 4
 Each stage must pass before proceeding to next
 
@@ -318,42 +545,134 @@ Each stage must pass before proceeding to next
 
 ## Backward Compatibility
 
-### Preserved Outputs
-All existing module outputs remain unchanged:
-- Stage 2: All CloudWatch outputs preserved
-- Stage 3: All S3, DynamoDB, SNS/SQS outputs preserved
-- Stage 4: All Lambda, OpenSearch, S3, Bedrock outputs preserved
+### Breaking Changes (Stage 4)
 
-### Variable Compatibility
-- Existing variables remain functional
-- New variables added only where necessary
-- No breaking changes to module interfaces
+**Internal Changes**:
+- Lambda and OpenSearch modules no longer create IAM role and security group
+- These resources moved to shared_infrastructure module
+- CloudWatch log group moved from opensearch module to main.tf
+
+**External Compatibility**:
+- All module outputs remain unchanged
+- Existing consumers of these outputs will continue to work
+- Module interface changes are internal implementation details
+
+### Module Interface Changes
+
+**Before**:
+```hcl
+module "lambda" {
+  # Lambda created its own role and SG
+  source = "./modules/lambda"
+  # No role/SG parameters needed
+}
+
+module "opensearch" {
+  # OpenSearch expected to receive role/SG as variables
+  source = "./modules/opensearch"
+  lambda_security_group_id  = module.lambda.lambda_security_group_id
+  lambda_execution_role_arn = module.lambda.lambda_execution_role_arn
+}
+```
+
+**After**:
+```hcl
+module "shared_infrastructure" {
+  # New module creates shared resources
+  source = "./modules/shared_infrastructure"
+  environment = var.environment
+  vpc_id      = var.vpc_id
+}
+
+module "lambda" {
+  # Lambda receives role/SG as variables
+  source = "./modules/lambda"
+  lambda_execution_role_arn    = module.shared_infrastructure.lambda_execution_role_arn
+  lambda_security_group_id     = module.shared_infrastructure.lambda_security_group_id
+}
+
+module "opensearch" {
+  # OpenSearch receives role/SG from shared_infrastructure
+  source = "./modules/opensearch"
+  lambda_security_group_id     = module.shared_infrastructure.lambda_security_group_id
+  lambda_execution_role_arn    = module.shared_infrastructure.lambda_execution_role_arn
+}
+```
+
+### Output Compatibility
+
+All existing module outputs are preserved:
+- `module.lambda.lambda_execution_role_arn` (now passed through from shared_infrastructure)
+- `module.lambda.lambda_security_group_id` (now passed through from shared_infrastructure)
+- `module.opensearch.domain_endpoint` (unchanged)
+- All other outputs unchanged
+
+**Note**: Outputs that were previously module-sourced may now be passthrough outputs from shared_infrastructure.
 
 ---
 
 ## Implementation Checklist
 
-- [ ] Fix Stage 2 CloudWatch dashboard syntax
+### Pre-Implementation
+- [ ] Backup all Terraform state files
+- [ ] Document current resource addresses (`terraform state list`)
+- [ ] Create development/testing environment
+
+### Stage 2 Implementation
+- [ ] Fix CloudWatch dashboard syntax errors
+- [ ] Run `terraform init` and `terraform validate`
+- [ ] Run `terraform plan` to verify changes
+
+### Stage 3 Implementation
 - [ ] Add S3 lifecycle filter with prefix
-- [ ] Remove DynamoDB lifecycle ignore_changes
+- [ ] Remove DynamoDB lifecycle ignore_changes block
 - [ ] Remove SNS auto_confirm_subscription parameter
-- [ ] Create shared_infrastructure module
-- [ ] Update lambda module to use shared resources
-- [ ] Update opensearch module to use shared resources
-- [ ] Update Stage 4 main.tf dependency order
-- [ ] Run terraform init/validate on all stages
-- [ ] Run terraform plan to verify no cycles
-- [ ] Update documentation
+- [ ] Run `terraform init` and `terraform validate`
+- [ ] Run `terraform plan` to verify changes
+
+### Stage 4 Implementation
+- [ ] Create shared_infrastructure module (main.tf, variables.tf, outputs.tf)
+- [ ] Update lambda module:
+  - [ ] Add new variables (lambda_execution_role_arn, lambda_execution_role_name, lambda_security_group_id)
+  - [ ] Remove aws_iam_role.lambda_execution resource
+  - [ ] Remove aws_security_group.lambda resource
+  - [ ] Update aws_lambda_function to use new variables
+- [ ] Update opensearch module:
+  - [ ] Add new variables (lambda_security_group_id, lambda_execution_role_arn, lambda_execution_role_name, cloudwatch_log_arn)
+  - [ ] Remove domain_arn variable
+  - [ ] Update access_policies to use self-reference
+  - [ ] Remove aws_cloudwatch_log_group.opensearch resource
+- [ ] Update Stage 4 main.tf:
+  - [ ] Add shared_infrastructure module block
+  - [ ] Update lambda module to pass new variables
+  - [ ] Update opensearch module to pass new variables
+  - [ ] Move aws_cloudwatch_log_group.opensearch to main.tf
+  - [ ] Update module dependency order
+- [ ] Run `terraform init` and `terraform validate`
+- [ ] **CRITICAL**: Perform state migration:
+  - [ ] Move aws_iam_role.lambda_execution
+  - [ ] Move aws_security_group.lambda
+  - [ ] Move aws_iam_role_policy_attachment.basic_execution
+  - [ ] Move aws_cloudwatch_log_group.opensearch
+- [ ] Run `terraform plan` to verify no unexpected resource recreation
+- [ ] Update module READMEs with new architecture
+
+### Post-Implementation
+- [ ] Close GitHub issues #1, #2, #3
+- [ ] Update project documentation
+- [ ] Create pull request with changes
 
 ---
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking existing deployments | High | Maintain output compatibility; test in dev environment first |
-| Missing IAM permissions | Medium | Include all necessary IAM policies in shared_infrastructure |
-| Terraform state corruption | Low | Backup state files before applying changes |
+| Risk | Impact | Likelihood | Mitigation |
+|------|--------|------------|------------|
+| State migration failure | High | Low | Test migration in dev environment first; keep backups |
+| Resource recreation during migration | High | Low | Careful state mv commands; verify with terraform plan |
+| Breaking existing deployments | High | Medium | Maintain output compatibility; thorough testing |
+| Missing IAM permissions after migration | Medium | Low | Include all necessary policies in shared_infrastructure |
+| Terraform provider version conflicts | Low | Low | Pin provider versions in all modules |
 
 ---
 
@@ -362,14 +681,16 @@ All existing module outputs remain unchanged:
 1. All `terraform init` commands complete successfully
 2. All `terraform validate` commands pass with no errors
 3. `terraform plan` completes with no circular dependency warnings
-4. All existing outputs remain accessible
-5. No unexpected resource recreation in plan output
+4. State migration completes without resource recreation
+5. All existing outputs remain accessible
+6. GitHub issues #1, #2, #3 are resolved
 
 ---
 
 ## References
 
 - GitHub Issues: #1, #2, #3
+- Terraform State Migration Documentation: https://www.terraform.io/cli/commands/state/mv
 - Terraform AWS Provider Documentation
 - AWS CloudWatch Dashboard Reference
 - OpenSearch Security Best Practices
