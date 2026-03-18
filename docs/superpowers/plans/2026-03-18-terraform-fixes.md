@@ -716,11 +716,12 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
 cd stage-4-rag-knowledge-base/terraform/modules/opensearch
 ```
 
-- [ ] **Step 2: Remove domain_arn and cloudwatch_log_arn variables**
+- [ ] **Step 2: Remove domain_arn variable**
 
-Edit `variables.tf`, remove these variable definitions:
+Edit `variables.tf`, remove this variable definition:
 - `variable "domain_arn"`
-- `variable "cloudwatch_log_arn"`
+
+**Note:** The `cloudwatch_log_arn` variable should NOT be removed - it's still needed as an input to receive the log group ARN from main.tf.
 
 - [ ] **Step 3: Update existing variable descriptions**
 
@@ -741,13 +742,9 @@ variable "lambda_execution_role_name" {
   description = "Name of Lambda execution role (from shared_infrastructure module)"
   type        = string
 }
-```
 
-- [ ] **Step 4: Add cloudwatch_log_arn variable**
-
-```hcl
 variable "cloudwatch_log_arn" {
-  description = "ARN of CloudWatch log group for OpenSearch logs"
+  description = "ARN of CloudWatch log group for OpenSearch logs (from main.tf)"
   type        = string
 }
 ```
@@ -769,8 +766,7 @@ git add stage-4-rag-knowledge-base/terraform/modules/opensearch/variables.tf
 git commit -m "refactor(stage4): update opensearch module variables
 
 - Remove domain_arn variable (now uses self-reference)
-- Remove cloudwatch_log_arn variable (log group moved to main.tf)
-- Add cloudwatch_log_arn as input variable
+- Update cloudwatch_log_arn description (log group moved to main.tf)
 - Update variable descriptions to note shared_infrastructure source
 
 Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
