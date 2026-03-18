@@ -10,12 +10,21 @@ data "terraform_remote_state" "stage1" {
   }
 }
 
+# S3 Module (moved before shared_infrastructure)
+module "s3" {
+  source = "./modules/s3"
+
+  bucket_name = var.documents_bucket_name
+  environment = var.environment
+}
+
 # Shared Infrastructure - IAM and Security Group
 module "shared_infrastructure" {
   source = "./modules/shared_infrastructure"
 
-  environment = var.environment
-  vpc_id      = data.terraform_remote_state.stage1.outputs.vpc_id
+  environment          = var.environment
+  vpc_id              = data.terraform_remote_state.stage1.outputs.vpc_id
+  documents_bucket_arn = module.s3.bucket_arn
 }
 
 # Bedrock Module
@@ -35,7 +44,6 @@ module "lambda" {
   vpc_id                     = data.terraform_remote_state.stage1.outputs.vpc_id
   private_subnet_ids         = data.terraform_remote_state.stage1.outputs.private_subnet_ids
   opensearch_domain_endpoint = module.opensearch.domain_endpoint
-  documents_bucket_arn       = module.s3.bucket_arn
   bedrock_embedding_model    = var.bedrock_embedding_model
   bedrock_llm_model          = var.bedrock_llm_model
   chunk_size                 = var.chunk_size
@@ -90,8 +98,6 @@ module "opensearch" {
 module "s3" {
   source = "./modules/s3"
 
-  bucket_name             = var.documents_bucket_name
-  environment             = var.environment
-  index_lambda_arn        = module.lambda.index_function_arn
-  index_lambda_function_name = module.lambda.index_function_name
+  bucket_name = var.documents_bucket_name
+  environment = var.environment
 }
