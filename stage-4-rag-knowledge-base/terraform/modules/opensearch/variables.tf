@@ -43,26 +43,21 @@ variable "engine_version" {
 }
 
 variable "lambda_security_group_id" {
-  description = "Security group ID of Lambda functions"
+  description = "Security group ID of Lambda functions (from shared_infrastructure module)"
   type        = string
 }
 
 variable "lambda_execution_role_arn" {
-  description = "ARN of Lambda execution role"
+  description = "ARN of Lambda execution role (from shared_infrastructure module)"
   type        = string
 }
 
 variable "lambda_execution_role_name" {
-  description = "Name of Lambda execution role"
-  type        = string
-}
-
-variable "domain_arn" {
-  description = "ARN of the OpenSearch domain"
+  description = "Name of Lambda execution role (from shared_infrastructure module)"
   type        = string
 }
 
 variable "cloudwatch_log_arn" {
-  description = "ARN of CloudWatch log group"
+  description = "ARN of CloudWatch log group for OpenSearch logs (from main.tf)"
   type        = string
 }

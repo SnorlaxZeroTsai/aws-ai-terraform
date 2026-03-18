@@ -10,6 +10,14 @@ data "terraform_remote_state" "stage1" {
   }
 }
 
+# Shared Infrastructure - IAM and Security Group
+module "shared_infrastructure" {
+  source = "./modules/shared_infrastructure"
+
+  environment = var.environment
+  vpc_id      = data.terraform_remote_state.stage1.outputs.vpc_id
+}
+
 # Bedrock Module
 module "bedrock" {
   source = "./modules/bedrock"
@@ -38,6 +46,22 @@ module "lambda" {
   index_lambda_memory_size   = var.index_lambda_memory_size
   search_lambda_timeout      = var.search_lambda_timeout
   search_lambda_memory_size  = var.search_lambda_memory_size
+
+  # From shared_infrastructure
+  lambda_execution_role_arn     = module.shared_infrastructure.lambda_execution_role_arn
+  lambda_execution_role_name    = module.shared_infrastructure.lambda_execution_role_name
+  lambda_security_group_id      = module.shared_infrastructure.lambda_security_group_id
+}
+
+# CloudWatch Log Group for OpenSearch
+resource "aws_cloudwatch_log_group" "opensearch" {
+  name              = "/aws/opensearch/${var.opensearch_domain_name}"
+  retention_in_days = 7
+
+  tags = {
+    Name  = "stage4-opensearch-logs-${var.environment}"
+    Stage = "4"
+  }
 }
 
 # OpenSearch Module
@@ -52,13 +76,14 @@ module "opensearch" {
   instance_count          = var.opensearch_instance_count
   ebs_volume_size         = var.opensearch_ebs_volume_size
   engine_version          = var.opensearch_engine_version
-  lambda_security_group_id = module.lambda.lambda_security_group_id
-  lambda_execution_role_arn = module.lambda.lambda_execution_role_arn
-  lambda_execution_role_name = module.lambda.lambda_execution_role_name
-  domain_arn              = module.opensearch.domain_arn
-  cloudwatch_log_arn      = aws_cloudwatch_log_group.opensearch.arn
 
-  depends_on = [module.lambda]
+  # From shared_infrastructure
+  lambda_security_group_id     = module.shared_infrastructure.lambda_security_group_id
+  lambda_execution_role_arn    = module.shared_infrastructure.lambda_execution_role_arn
+  lambda_execution_role_name   = module.shared_infrastructure.lambda_execution_role_name
+
+  # From main.tf resource
+  cloudwatch_log_arn           = aws_cloudwatch_log_group.opensearch.arn
 }
 
 # S3 Module
@@ -69,15 +94,4 @@ module "s3" {
   environment             = var.environment
   index_lambda_arn        = module.lambda.index_function_arn
   index_lambda_function_name = module.lambda.index_function_name
-}
-
-# CloudWatch Log Group for OpenSearch (created separately for module dependency)
-resource "aws_cloudwatch_log_group" "opensearch" {
-  name              = "/aws/opensearch/${var.opensearch_domain_name}"
-  retention_in_days = 7
-
-  tags = {
-    Name  = "stage4-opensearch-logs-${var.environment}"
-    Stage = "4"
-  }
 }

@@ -58,7 +58,7 @@ resource "aws_opensearch_domain" "main" {
         Action    = "es:*"
         Effect    = "Allow"
         Principal = { AWS = var.lambda_execution_role_arn }
-        Resource  = "${var.domain_arn}/*"
+        Resource  = "${aws_opensearch_domain.main.arn}/*"
       }
     ]
   })
@@ -92,19 +92,6 @@ resource "aws_opensearch_domain" "main" {
     Stage       = "4"
     Environment = var.environment
     Purpose     = "rag-vector-store"
-  }
-
-  depends_on = [aws_cloudwatch_log_group.opensearch]
-}
-
-# CloudWatch Log Group for OpenSearch
-resource "aws_cloudwatch_log_group" "opensearch" {
-  name              = "/aws/opensearch/${var.domain_name}"
-  retention_in_days = 7
-
-  tags = {
-    Name  = "stage4-opensearch-logs-${var.environment}"
-    Stage = "4"
   }
 }
 
