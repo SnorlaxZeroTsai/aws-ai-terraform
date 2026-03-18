@@ -404,6 +404,40 @@ resource "aws_lambda_function" "index" {
 }
 ```
 
+**modules/lambda/outputs.tf** - Add passthrough outputs for backward compatibility:
+```hcl
+# Passthrough outputs for backward compatibility
+# These now come from shared_infrastructure module instead of being created here
+
+output "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role (passthrough from shared_infrastructure)"
+  value       = var.lambda_execution_role_arn
+}
+
+output "lambda_execution_role_name" {
+  description = "Name of the Lambda execution role (passthrough from shared_infrastructure)"
+  value       = var.lambda_execution_role_name
+}
+
+output "lambda_security_group_id" {
+  description = "Security group ID for Lambda functions (passthrough from shared_infrastructure)"
+  value       = var.lambda_security_group_id
+}
+
+# Existing outputs remain unchanged
+output "index_function_name" {
+  description = "Name of the index Lambda function"
+  value       = aws_lambda_function.index.function_name
+}
+
+output "index_function_arn" {
+  description = "ARN of the index Lambda function"
+  value       = aws_lambda_function.index.arn
+}
+
+# ... other existing outputs ...
+```
+
 ---
 
 ## New Dependency Graph
@@ -658,6 +692,11 @@ All existing module outputs are preserved:
 - [ ] Update module READMEs with new architecture
 
 ### Post-Implementation
+- [ ] Verify passthrough outputs resolve correctly:
+  - [ ] `terraform output module.lambda.lambda_execution_role_arn`
+  - [ ] `terraform output module.lambda.lambda_security_group_id`
+  - [ ] `terraform output module.lambda.lambda_execution_role_name`
+- [ ] Confirm existing consumers of lambda outputs still work
 - [ ] Close GitHub issues #1, #2, #3
 - [ ] Update project documentation
 - [ ] Create pull request with changes
