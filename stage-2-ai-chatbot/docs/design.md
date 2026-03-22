@@ -199,9 +199,10 @@ This document outlines the architectural decisions and design rationale for Stag
 - Automatic encryption (KMS)
 
 **Network:**
-- Lambda in public subnets (for Bedrock access)
-- Security group follows Stage 1 patterns
-- No internet gateway required (VPC endpoint option)
+- Lambda runs outside VPC (accesses public AWS services directly)
+- No VPC dependencies required
+- All services (Bedrock, Secrets Manager, CloudWatch) accessed via public endpoints
+- Stage 2 can deploy independently of Stage 1
 
 ---
 

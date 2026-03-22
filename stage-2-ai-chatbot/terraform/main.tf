@@ -1,12 +1,3 @@
-# Get Stage 1 VPC configuration
-data "terraform_remote_state" "stage1" {
-  backend = "local"
-
-  config = {
-    path = "${path.module}/../../stage-1-terraform-foundation/terraform/terraform.tfstate"
-  }
-}
-
 # Secrets Manager Module
 module "secrets_manager" {
   source = "./modules/secrets_manager"
@@ -41,9 +32,6 @@ module "lambda" {
   memory_size  = var.lambda_memory_size
 
   source_dir = "${path.module}/../src"
-
-  subnet_ids         = data.terraform_remote_state.stage1.outputs.public_subnet_ids
-  security_group_ids = null  # Use default VPC security group
 
   environment_variables = {
     PROJECT_NAME    = var.project_name

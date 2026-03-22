@@ -16,17 +16,6 @@ variable "project_name" {
   default     = "aws-ai-roadmap"
 }
 
-# Stage 1 VPC Configuration
-variable "vpc_id" {
-  description = "VPC ID from Stage 1"
-  type        = string
-}
-
-variable "public_subnet_ids" {
-  description = "List of public subnet IDs from Stage 1 for Lambda"
-  type        = list(string)
-}
-
 # Lambda Configuration
 variable "lambda_timeout" {
   description = "Lambda function timeout in seconds"

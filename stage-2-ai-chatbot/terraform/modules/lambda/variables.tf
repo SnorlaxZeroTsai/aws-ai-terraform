@@ -48,18 +48,6 @@ variable "source_dir" {
   type        = string
 }
 
-variable "subnet_ids" {
-  description = "List of subnet IDs for Lambda ENI"
-  type        = list(string)
-  default     = []
-}
-
-variable "security_group_ids" {
-  description = "List of security group IDs for Lambda"
-  type        = list(string)
-  default     = null
-}
-
 variable "environment_variables" {
   description = "Environment variables for the Lambda function"
   type        = map(string)
