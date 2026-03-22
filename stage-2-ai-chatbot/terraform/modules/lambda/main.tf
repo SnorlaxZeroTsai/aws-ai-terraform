@@ -35,12 +35,6 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda.name
 }
 
-# IAM Policy for Lambda to access VPC (if subnets provided)
-resource "aws_iam_role_policy_attachment" "lambda_vpc_execution" {
-  count      = length(var.subnet_ids) > 0 ? 1 : 0
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-  role       = aws_iam_role.lambda.name
-}
 
 # IAM Policy for Bedrock access
 resource "aws_iam_role_policy" "bedrock" {
@@ -93,11 +87,6 @@ resource "aws_lambda_function" "this" {
   filename         = data.archive_file.lambda_zip.output_path
 
   role = aws_iam_role.lambda.arn
-
-  vpc_config {
-    subnet_ids         = var.subnet_ids
-    security_group_ids = var.security_group_ids
-  }
 
   environment {
     variables = merge(
